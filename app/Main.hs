@@ -52,6 +52,7 @@ main = do
         threadDelay 3000000
         m' <- listMessages client f
         writeIORef messages m'
+        putStrLn "Firing the signal"
         fireSignal changeKey ctx
     runEngineLoop defaultEngineConfig {
          initialDocument = fileDocument "chat.qml",
