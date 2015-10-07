@@ -14,6 +14,7 @@ import Control.Monad.ST
 import Data.STRef
 import System.Environment ( getArgs )
 import Control.Concurrent
+import           Pipes
 
 getNick :: [User] -> Text -> Text
 getNick us id = userNick $ fromJust $ find (\u -> (show $ userId u) == (T.unpack id)) us
@@ -38,6 +39,13 @@ createWindow client users f messagesVar changeKey = do
             return ())]
     newObject rootClass ()
 
+appendMessage :: IORef [Event] -> SignalKey(IO()) -> ObjRef () -> Producer Event IO () -> IO ()
+appendMessage ref key ctx producer = runEffect $ for producer $ \e -> do
+    lift $ do
+      ms <- readIORef ref
+      writeIORef ref (ms ++ [e])
+      fireSignal key ctx
+
 main :: IO ()
 main = do
   (authToken:args) <- getArgs
@@ -49,11 +57,10 @@ main = do
     changeKey <- newSignalKey
     ctx <- createWindow client users f messages changeKey
     forkOS $ forever $ do
-        threadDelay 3000000
-        m' <- listMessages client f
-        writeIORef messages m'
-        putStrLn "Firing the signal"
-        fireSignal changeKey ctx
+        streamFlow client (streamOptions f) (appendMessage messages changeKey ctx)
+        {-m' <- listMessages client f-}
+        {-writeIORef messages m'-}
+        {-fireSignal changeKey ctx-}
     runEngineLoop defaultEngineConfig {
          initialDocument = fileDocument "chat.qml",
          contextObject = Just $ anyObjRef ctx}

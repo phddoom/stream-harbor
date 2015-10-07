@@ -28,6 +28,7 @@ executable stream-harbor
                      , flowdock
                      , hsqml
                      , text
+                     , pipes
   default-language:    Haskell2010
 
 test-suite stream-harbor-test
